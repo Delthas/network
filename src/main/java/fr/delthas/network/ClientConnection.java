@@ -119,13 +119,16 @@ public class ClientConnection {
    */
   public boolean receivePacket(boolean blocking) throws IOException {
     receiveBuffer.clear();
-    SocketAddress sender = blocking ? socket.receiveBlocking(receiveBuffer) : socket.receive(receiveBuffer);
-    receiveBuffer.flip();
-    if (!address.equals(sender)) {
-      return false;
-    }
-    if (receiveBuffer.remaining() <= 9 || receiveBuffer.get() != protocolId) {
-      return false;
+    while (true) {
+      SocketAddress sender = blocking ? socket.receiveBlocking(receiveBuffer) : socket.receive(receiveBuffer);
+      receiveBuffer.flip();
+      if (!address.equals(sender) || receiveBuffer.remaining() <= 9 || receiveBuffer.get() != protocolId) {
+        if (!blocking) {
+          return false;
+        }
+      } else {
+        break;
+      }
     }
     int packetSequence = Short.toUnsignedInt(receiveBuffer.getShort());
     int packetAck = Short.toUnsignedInt(receiveBuffer.getShort());

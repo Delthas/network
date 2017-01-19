@@ -20,24 +20,6 @@ import java.util.List;
  */
 public class ServerConnection {
 
-  private static class ConnectionData {
-    public float timeoutAccumulator = 0f;
-    public SocketAddress address;
-    public ReliabilitySystem reliabilitySystem;
-    public int id;
-
-    public ConnectionData(ServerConnection serverConnection, SocketAddress address, int id) {
-      this.address = address;
-      this.id = id;
-      reliabilitySystem = new ReliabilitySystem() {
-        @Override
-        protected void packetLost(int saveId) throws IOException {
-          serverConnection.packetLost(ConnectionData.this, saveId);
-        }
-      };
-    }
-  }
-
   private byte protocolId;
   private float timeout;
   private int highestId = -1;
@@ -51,7 +33,6 @@ public class ServerConnection {
   private int recvPacketsClosedConnections = 0;
   private int lostPacketsClosedConnections = 0;
   private int ackedPacketsClosedConnections = 0;
-
   private int saveIndex = -1;
   private ByteBuffer[] saves = new ByteBuffer[10];
 
@@ -135,10 +116,17 @@ public class ServerConnection {
    */
   public int receivePacket(boolean blocking) throws IOException {
     receiveBuffer.clear();
-    SocketAddress sender = blocking ? socket.receiveBlocking(receiveBuffer) : socket.receive(receiveBuffer);
-    receiveBuffer.flip();
-    if (receiveBuffer.remaining() <= 9 || receiveBuffer.get() != protocolId) {
-      return -1;
+    SocketAddress sender;
+    while (true) {
+      sender = blocking ? socket.receiveBlocking(receiveBuffer) : socket.receive(receiveBuffer);
+      receiveBuffer.flip();
+      if (receiveBuffer.remaining() <= 9 || receiveBuffer.get() != protocolId) {
+        if (!blocking) {
+          return -1;
+        }
+      } else {
+        break;
+      }
     }
     int packetSequence = Short.toUnsignedInt(receiveBuffer.getShort());
     int packetAck = Short.toUnsignedInt(receiveBuffer.getShort());
@@ -237,6 +225,24 @@ public class ServerConnection {
       rtt += connection.reliabilitySystem.getRtt();
     }
     return (float) (rtt / connections.size());
+  }
+  
+  private static class ConnectionData {
+    public float timeoutAccumulator = 0f;
+    public SocketAddress address;
+    public ReliabilitySystem reliabilitySystem;
+    public int id;
+    
+    public ConnectionData(ServerConnection serverConnection, SocketAddress address, int id) {
+      this.address = address;
+      this.id = id;
+      reliabilitySystem = new ReliabilitySystem() {
+        @Override
+        protected void packetLost(int saveId) throws IOException {
+          serverConnection.packetLost(ConnectionData.this, saveId);
+        }
+      };
+    }
   }
 
 }
