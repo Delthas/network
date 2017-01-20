@@ -28,10 +28,13 @@ class Socket {
     channel.bind(new InetSocketAddress(port));
     key = channel.register(Selector.open(), SelectionKey.OP_WRITE | SelectionKey.OP_READ);
   }
-
-  public void close() throws IOException {
+  
+  public void close() {
     if (channel != null) {
-      channel.close();
+      try {
+        channel.close();
+      } catch (IOException ignore) {
+      }
       channel = null;
     }
   }

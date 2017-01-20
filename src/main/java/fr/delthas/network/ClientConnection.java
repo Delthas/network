@@ -58,8 +58,8 @@ public class ClientConnection {
     reliabilitySystem.reset();
     socket.open();
   }
-
-  public void stop() throws IOException {
+  
+  public void stop() {
     socket.close();
   }
 

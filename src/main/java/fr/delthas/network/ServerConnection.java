@@ -76,7 +76,16 @@ public class ServerConnection {
       sendBufferSlice.position(0);
     }
     int size = sendBufferSlice.remaining();
-    ConnectionData connection = connections.get(address);
+    ConnectionData connection = null;
+    for (ConnectionData connectionData : connections) {
+      if (connectionData.id == address) {
+        connection = connectionData;
+        break;
+      }
+    }
+    if (connection == null) {
+      throw new RuntimeException("Address " + address + " doesn't exist.");
+    }
     sendBuffer.clear();
     sendBuffer.put(protocolId);
     sendBuffer.putShort((short) connection.reliabilitySystem.getLocalSequence());
